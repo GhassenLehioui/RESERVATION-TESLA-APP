@@ -8,7 +8,10 @@ const cors       = require("cors");
 const fs         = require("fs");
 const path       = require("path");
 const db         = require('./realtime');
-const nodemailer = require("nodemailer");
+// Use Resend for transactional emails (reads key from process.env.RESEND_API_KEY)
+const ResendImport = require("resend");
+const Resend = ResendImport && (ResendImport.default || ResendImport);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const app = express();
 const corsOrigin ="*";
@@ -22,20 +25,12 @@ app.use(express.json());
 // ───────────────────────────────────────────────────────────────
 const CHARGING_FILE     = path.join(__dirname, "charging-centers.json");
 const OTP_EXPIRY_MS     = 2 * 60 * 1000; // 2 minutes
-const EMAIL_SENDER      ="ghassenlhiwi@gmail.com";
-const EMAIL_PASSWORD    ="gafurtqmgcpxiuwe";
+const EMAIL_SENDER      = process.env.EMAIL_SENDER || "no-reply@tesla-app.example";
 
 // ───────────────────────────────────────────────────────────────
-//  Mailer (Gmail)
+//  Mailer (Resend)
+//  Uses `process.env.RESEND_API_KEY`. If not set, OTPs are logged for testing.
 // ───────────────────────────────────────────────────────────────
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: EMAIL_SENDER,
-    pass: EMAIL_PASSWORD,
-  },
-});
 
 // ───────────────────────────────────────────────────────────────
 //  Helpers — lecture de fichier JSON statique
@@ -72,12 +67,7 @@ function generateOTP() {
 }
 
 async function sendOTPEmail(toEmail, otp) {
-  const mailOptions = {
-    from: EMAIL_SENDER,
-    to: toEmail,
-    subject: "Votre code OTP — Tesla App",
-    text: `Votre code de vérification est : ${otp}. Il expire dans 2 minutes.`,
-    html: `
+  const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #E31937; text-align: center;">Tesla App</h2>
         <h3 style="color: #333;">Code de vérification</h3>
@@ -104,11 +94,25 @@ async function sendOTPEmail(toEmail, otp) {
           L'équipe Tesla App
         </p>
       </div>
-    `,
-  };
+    `;
 
-  await transporter.sendMail(mailOptions);
-  console.log(`[OTP] Envoyé à ${toEmail}`);
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[OTP] RESEND_API_KEY not set — OTP for ${toEmail}: ${otp}`);
+    return;
+  }
+
+  try {
+    await resend.emails.send({
+      from: EMAIL_SENDER,
+      to: toEmail,
+      subject: "Votre code OTP — Tesla App",
+      html,
+    });
+    console.log(`[OTP] Envoyé à ${toEmail} via Resend`);
+  } catch (err) {
+    console.error("[OTP] Erreur envoi email via Resend:", err && err.message ? err.message : err);
+    throw err;
+  }
 }
 
 // ───────────────────────────────────────────────────────────────
