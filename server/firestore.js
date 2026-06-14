@@ -12,18 +12,16 @@ function init() {
     throw new Error('[FIRESTORE] firebase-admin is not installed');
   }
 
-  // Support either a file path or base64-encoded JSON in env
-  const svcPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || path.join(__dirname, 'firebase-service-account.json');
+  // Lire la clé de service depuis le fichier local `server/firebase-service-account.json`.
+  const svcPath = path.join(__dirname, 'firebase-service-account.json');
   let serviceAccount = null;
 
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_JSON, 'base64').toString('utf-8'));
-  } else if (fs.existsSync(svcPath)) {
+  if (fs.existsSync(svcPath)) {
     serviceAccount = JSON.parse(fs.readFileSync(svcPath, 'utf-8'));
   }
 
   if (!serviceAccount) {
-    throw new Error('[FIRESTORE] No service account provided. Set FIREBASE_SERVICE_ACCOUNT_JSON (base64) or create firebase-service-account.json');
+    throw new Error('[FIRESTORE] Aucun compte de service trouvé. Crée le fichier server/firebase-service-account.json');
   }
 
   admin.initializeApp({
