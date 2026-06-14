@@ -1,4 +1,4 @@
-const DATABASE_URL = "https://abcd-caa45-default-rtdb.europe-west1.firebasedatabase.app/";
+const DATABASE_URL = "https://abcd-caa45-default-rtdb.europe-west1.firebasedatabase.app";
 
 function encodeQuery(params) {
   return Object.entries(params)
@@ -61,13 +61,12 @@ module.exports = {
   },
 
   findCarByPlate: async (plate) => {
-    const data = await realtimeGet('cars', {
-      orderBy: '"plate"',
-      equalTo: `"${plate}"`,
-    });
+    const data = await realtimeGet('cars');
     if (!data) return null;
-    const [vin, value] = Object.entries(data)[0] || [];
-    return vin ? { vin, ...value } : null;
+    const found = Object.entries(data).find(([, value]) => value.plate === plate);
+    if (!found) return null;
+    const [vin, value] = found;
+    return { vin, ...value };
   },
 
   addCar: async (car) => {
@@ -100,21 +99,19 @@ module.exports = {
   },
 
   getReservationsByVin: async (vin) => {
-    const data = await realtimeGet('reservations', {
-      orderBy: '"vin"',
-      equalTo: `"${vin}"`,
-    });
+    const data = await realtimeGet('reservations');
     if (!data) return [];
-    return Object.entries(data).map(([id, value]) => ({ id, ...value }));
+    return Object.entries(data)
+      .filter(([, value]) => value.vin === vin)
+      .map(([id, value]) => ({ id, ...value }));
   },
 
   getReservationsByCenter: async (centerId) => {
-    const data = await realtimeGet('reservations', {
-      orderBy: '"centerId"',
-      equalTo: centerId,
-    });
+    const data = await realtimeGet('reservations');
     if (!data) return [];
-    return Object.entries(data).map(([id, value]) => ({ id, ...value }));
+    return Object.entries(data)
+      .filter(([, value]) => Number(value.centerId) === Number(centerId))
+      .map(([id, value]) => ({ id, ...value }));
   },
 
   isSlotReserved: async (centerId, date, time) => {
