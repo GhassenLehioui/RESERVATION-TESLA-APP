@@ -9,8 +9,7 @@ const fs         = require("fs");
 const path       = require("path");
 const db         = require('./realtime');
 // Use Resend for transactional emails (reads key from process.env.RESEND_API_KEY)
-const ResendImport = require("resend");
-const Resend = ResendImport && (ResendImport.default || ResendImport);
+const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const app = express();
