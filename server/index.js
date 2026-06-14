@@ -532,19 +532,19 @@ app.post("/api/reservation/confirm", async (req, res) => {
     mapsLink: mapsLink
   };
 
-  // Sauvegarder la réservation dans le fichier JSON
+  // Sauvegarder la réservation dans la base de données
   await db.addReservation(reservation);
 
-  // Envoyer l'email de confirmation
-  await transporter.sendMail({
+  // Envoyer l'email de confirmation via Resend
+  await resend.emails.send({
     from: EMAIL_SENDER,
     to: userEmail,
     subject: emailSubject,
     html: emailHtml,
   });
 
-    console.log(`[RESERVATION] Email de confirmation envoyé à ${userEmail}`);
-    console.log(`[RESERVATION] VIN: ${vin} | Centre: ${centerName} | Date: ${date} | Heure: ${time}`);
+  console.log(`[RESERVATION] Email de confirmation envoyé à ${userEmail} via Resend`);
+  console.log(`[RESERVATION] VIN: ${vin} | Centre: ${centerName} | Date: ${date} | Heure: ${time}`);
 
     res.json({
       success: true,
