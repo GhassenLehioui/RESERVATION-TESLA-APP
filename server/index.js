@@ -174,23 +174,18 @@ app.post("/api/cars/add", async (req, res) => {
   await db.addCar({ vin, plate: normalizedPlate, email, otp, otp_expires: expires });
 
   console.log(`[ADD] Voiture ajoutée — VIN: ${vin} | Plaque: ${normalizedPlate}`);
+  
+  // Envoyer l'OTP par email en tâche de fond (ne pas bloquer la réponse)
+  sendOTPEmail(email, otp)
+    .then(() => console.log(`[ADD] OTP envoyé à ${email} pour VIN: ${vin}`))
+    .catch((err) => console.error("[ADD] Erreur envoi email:", err && err.message ? err.message : err));
 
-  // Envoyer l'OTP par email
-  try {
-    await sendOTPEmail(email, otp);
-    console.log(`[ADD] OTP envoyé à ${email} pour VIN: ${vin}`);
-    res.status(201).json({
-      success: true,
-      message: "Voiture ajoutée et OTP envoyé par email",
-    });
-  } catch (err) {
-    console.error("[ADD] Erreur envoi email:", err.message);
-    // La voiture est déjà sauvegardée, on informe juste que l'email a échoué
-    res.status(201).json({
-      success: true,
-      message: "Voiture ajoutée mais erreur d'envoi email, réessayez",
-    });
-  }
+  // Répondre immédiatement pour que le client puisse saisir l'OTP sans délai
+  res.status(201).json({
+    success: true,
+    message: "Voiture ajoutée — OTP envoyé (en cours)",
+  });
+  // (envoi d'email en arrière-plan géré ci-dessus)
 });
 
 // ───────────────────────────────────────────────────────────────
@@ -226,19 +221,12 @@ app.post("/api/cars/check-etr", async (req, res) => {
   const expires = Date.now() + OTP_EXPIRY_MS;
 
   await db.updateCarOTP(vin, otp, expires);
+  // Envoyer l'email en tâche de fond et répondre immédiatement
+  sendOTPEmail(car.email, otp)
+    .then(() => console.log(`[CHECK-ETR] OTP envoyé à ${car.email} pour VIN: ${vin}`))
+    .catch((err) => console.error("[CHECK-ETR] Erreur envoi email:", err && err.message ? err.message : err));
 
-  // Envoyer l'email
-  try {
-    await sendOTPEmail(car.email, otp);
-    console.log(`[CHECK-ETR] OTP envoyé à ${car.email} pour VIN: ${vin}`);
-    res.json({ exists: true, message: "OTP envoyé par email" });
-  } catch (err) {
-    console.error("[CHECK-ETR] Erreur envoi email:", err.message);
-    res.status(500).json({
-      exists: false,
-      message: "Erreur lors de l'envoi de l'email",
-    });
-  }
+  res.json({ exists: true, message: "OTP généré — envoi en cours" });
 });
 
 // ───────────────────────────────────────────────────────────────
@@ -272,18 +260,11 @@ app.post("/api/cars/check", async (req, res) => {
 
   await db.updateCarOTP(vin, otp, expires);
 
-  // Envoyer l'email
-  try {
-    await sendOTPEmail(car.email, otp);
-    console.log(`[CHECK] OTP généré pour VIN: ${vin}`);
-    res.json({ exists: true, message: "OTP envoyé par email" });
-  } catch (err) {
-    console.error("[CHECK] Erreur envoi email:", err.message);
-    res.status(500).json({
-      exists: false,
-      message: "Erreur lors de l'envoi de l'email",
-    });
-  }
+  // Répondre immédiatement, puis envoyer l'email en arrière-plan.
+  res.json({ exists: true, message: "OTP envoyé par email" });
+  sendOTPEmail(car.email, otp)
+    .then(() => console.log(`[CHECK] OTP généré pour VIN: ${vin}`))
+    .catch((err) => console.error("[CHECK] Erreur envoi email:", err.message));
 });
 
 // ───────────────────────────────────────────────────────────────
