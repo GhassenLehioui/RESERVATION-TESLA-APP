@@ -63,7 +63,7 @@ module.exports = {
   findCarByPlate: async (plate) => {
     const data = await realtimeGet('cars');
     if (!data) return null;
-    const found = Object.entries(data).find(([, value]) => value.plate === plate);
+    const found = Object.entries(data).find(([, value]) => value && value.plate === plate);
     if (!found) return null;
     const [vin, value] = found;
     return { vin, ...value };
