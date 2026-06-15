@@ -24,7 +24,7 @@ app.use(express.json());
 // ───────────────────────────────────────────────────────────────
 const CHARGING_FILE     = path.join(__dirname, "charging-centers.json");
 const OTP_EXPIRY_MS     = 2 * 60 * 1000; // 2 minutes
-const EMAIL_SENDER      = process.env.EMAIL_SENDER || "no-reply@tesla-app.example";
+const EMAIL_SENDER      = process.env.EMAIL_SENDER || "onboarding@resend.dev";
 
 // ───────────────────────────────────────────────────────────────
 //  Mailer (Resend)
